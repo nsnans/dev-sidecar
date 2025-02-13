@@ -1,10 +1,10 @@
 const lodash = require('lodash')
-const config = require('./config')
+const config = require('./config-api')
 const event = require('./event')
 const modules = require('./modules')
 const shell = require('./shell')
 const status = require('./status')
-const log = require('./utils/util.log')
+const log = require('./utils/util.log.core')
 
 const context = {
   config,

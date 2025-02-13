@@ -1,11 +1,11 @@
 const http = require('node:http')
 const https = require('node:https')
 const jsonApi = require('../../../json')
-const log = require('../../../utils/util.log')
+const log = require('../../../utils/util.log.server')
 const RequestCounter = require('../../choice/RequestCounter')
 const commonUtil = require('../common/util')
 // const upgradeHeader = /(^|,)\s*upgrade\s*($|,)/i
-const DnsUtil = require('../../dns/index')
+const DnsUtil = require('../../dns')
 const compatible = require('../compatible/compatible')
 const InsertScriptMiddleware = require('../middleware/InsertScriptMiddleware')
 const dnsLookup = require('./dnsLookup')
@@ -160,7 +160,7 @@ module.exports = function createRequestHandler (createIntercepts, middlewares, e
             } else {
               log.info(`请求返回: 【${proxyRes.statusCode}】${url}, cost: ${cost} ms`)
             }
-            // console.log('request:', proxyReq, proxyReq.socket)
+            // log.info('request:', proxyReq, proxyReq.socket)
 
             if (cost > MAX_SLOW_TIME) {
               countSlow(isDnsIntercept, `代理请求成功但太慢, cost: ${cost} ms > ${MAX_SLOW_TIME} ms`)
@@ -246,7 +246,7 @@ module.exports = function createRequestHandler (createIntercepts, middlewares, e
       const proxyRes = await proxyRequestPromise()
 
       // proxyRes.on('data', (chunk) => {
-      //   // console.log('BODY: ')
+      //   // log.info('BODY: ')
       // })
       proxyRes.on('error', (error) => {
         countSlow(null, `error: ${error.message}`)

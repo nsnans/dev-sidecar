@@ -2,7 +2,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const _ = require('lodash')
 const forge = require('node-forge')
-const log = require('../../../utils/util.log')
+const log = require('../../../utils/util.log.server')
 const config = require('../common/config')
 // const colors = require('colors')
 
@@ -15,7 +15,7 @@ const pki = forge.pki
 //   const user = os.userInfo()
 //   username = user.username
 // } catch (e) {
-//   console.log('get userinfo error', e)
+//   log.info('get userinfo error', e)
 // }
 
 utils.createCA = function (CN) {
@@ -250,18 +250,25 @@ utils.initCA = function ({ caCertPath, caKeyPath }) {
       caKeyPath,
       create: false,
     }
-  } catch {
-    const caObj = utils.createCA(config.caName)
+  } catch (e0) {
+    log.info('证书文件不存在，重新生成:', e0)
 
-    const caCert = caObj.cert
-    const cakey = caObj.key
+    try {
+      const caObj = utils.createCA(config.caName)
 
-    const certPem = pki.certificateToPem(caCert)
-    const keyPem = pki.privateKeyToPem(cakey)
-    fs.mkdirSync(path.dirname(caCertPath), { recursive: true })
-    fs.writeFileSync(caCertPath, certPem)
-    fs.writeFileSync(caKeyPath, keyPem)
-    log.info('生成证书文件成功，共2个文件:', caCertPath, caKeyPath)
+      const caCert = caObj.cert
+      const cakey = caObj.key
+
+      const certPem = pki.certificateToPem(caCert)
+      const keyPem = pki.privateKeyToPem(cakey)
+      fs.mkdirSync(path.dirname(caCertPath), { recursive: true })
+      fs.writeFileSync(caCertPath, certPem)
+      fs.writeFileSync(caKeyPath, keyPem)
+      log.info('生成证书文件成功，共2个文件:', caCertPath, caKeyPath)
+    } catch (e) {
+      log.error('生成证书文件失败:', caCertPath, caKeyPath, ', error:', e)
+      throw e
+    }
   }
   return {
     caCertPath,

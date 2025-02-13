@@ -75,20 +75,12 @@ module.exports = defineConfig({
         productName: 'dev-sidecar',
         // eslint-disable-next-line no-template-curly-in-string
         artifactName: 'DevSidecar-${version}-${arch}.${ext}',
-        copyright: 'Copyright © 2020-2024 Greper, WangLiang',
+        copyright: 'Copyright © 2020-2025 Greper, WangLiang',
         nsis: {
           oneClick: false,
           perMachine: true,
           allowElevation: true,
           allowToChangeInstallationDirectory: true,
-        },
-        mac: {
-          icon: './build/mac/icon.icns',
-          target: {
-            arch: 'universal',
-            target: 'dmg',
-          },
-          category: 'public.app-category.developer-tools',
         },
         win: {
           icon: 'build/icons/',
@@ -105,14 +97,22 @@ module.exports = defineConfig({
           target: [
             {
               target: 'deb',
-              arch: ['x64', 'arm64'],
+              arch: ['x64', 'arm64', 'armv7l'],
             },
             {
               target: 'AppImage',
-              arch: ['x64', 'arm64'],
+              arch: ['x64', 'arm64', 'armv7l'],
             },
           ],
           category: 'System',
+        },
+        mac: {
+          icon: './build/mac/icon.icns',
+          target: {
+            target: 'dmg',
+            arch: ['x64', 'arm64', 'universal'],
+          },
+          category: 'public.app-category.developer-tools',
         },
         publish: {
           provider: publishProvider,

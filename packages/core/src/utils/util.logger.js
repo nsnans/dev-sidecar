@@ -1,6 +1,8 @@
 const path = require('node:path')
 const log4js = require('log4js')
-const configFromFiles = require('../config/index').configFromFiles
+const logOrConsole = require('./util.log-or-console')
+const defaultConfig = require('../config/index.js')
+const configFromFiles = defaultConfig.configFromFiles
 
 // 日志级别
 const level = process.env.NODE_ENV === 'development' ? 'debug' : 'info'
@@ -27,13 +29,19 @@ const appenderConfig = {
   pattern: 'yyyy-MM-dd',
   compress: true, // 压缩日志文件
   keepFileExt: true, // 保留日志文件扩展名为 .log
-  backups: configFromFiles.app.keepLogFileCount, // 保留日志文件数
+  backups: Math.ceil(configFromFiles.app.keepLogFileCount) || defaultConfig.app.keepLogFileCount, // 保留日志文件数
+  maxLogSize: Math.ceil((configFromFiles.app.maxLogFileSize || defaultConfig.app.maxLogFileSize) * 1024 * 1024 * (configFromFiles.app.maxLogFileSizeUnit === 'GB' ? 1024 : 1)), // 目前单位只有GB和MB
 }
 
 let log = null
 
 // 设置一组日志配置
 function log4jsConfigure (categories) {
+  if (log != null) {
+    log.error('当前进程已经设置过日志配置，无法再设置更多日志配置:', categories)
+    return
+  }
+
   const config = {
     appenders: {
       std: { type: 'stdout' },
@@ -52,8 +60,9 @@ function log4jsConfigure (categories) {
 
   // 拿第一个日志类型来logger并设置到log变量中
   log = log4js.getLogger(categories[0])
+  logOrConsole.setLogger(log)
 
-  log.info('设置日志配置完成：', config)
+  log.info(`设置日志配置完成，进程ID: ${process.pid}，categories：[${categories}]，config:`, JSON.stringify(config))
 }
 
 module.exports = {
@@ -75,8 +84,8 @@ module.exports = {
     } else {
       if (log == null) {
         log4jsConfigure([category])
-      } else {
-        log.error(`当前进程已经设置过日志配置，无法设置 "${category}" 的配置，先临时返回 "${log.category}" 的 log 进行日志记录。如果与其他类型的日志在同一进程中写入，请参照 core 和 gui 一起配置`)
+      } else if (category !== log.category) {
+        log.error(`当前进程已经设置过日志配置，无法再设置 "${category}" 的配置，先临时返回 "${log.category}" 的 log 进行日志记录。如果与其他类型的日志在同一进程中写入，请参照 core 和 gui 一起配置`)
       }
 
       return log

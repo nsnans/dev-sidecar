@@ -5,9 +5,10 @@ const fs = require('node:fs')
 const path = require('node:path')
 const request = require('request')
 const Registry = require('winreg')
-const log = require('../../../utils/util.log')
+const log = require('../../../utils/util.log.core')
 const Shell = require('../../shell')
-const extraPath = require('../extra-path/index')
+const extraPath = require('../extra-path')
+const dateUtil = require('../../../utils/util.date')
 
 const execute = Shell.execute
 const execFile = Shell.execFile
@@ -15,7 +16,7 @@ const execFile = Shell.execFile
 let config = null
 function loadConfig () {
   if (config == null) {
-    config = require('../../../config.js')
+    config = require('../../../config-api.js')
   }
 }
 
@@ -76,8 +77,13 @@ function loadLastModifiedTimeFromTxt (fileTxt) {
 // 保存 国内域名白名单 内容到 `~/domestic-domain-allowlist.txt` 文件中
 function saveDomesticDomainAllowListFile (fileTxt) {
   const filePath = getDomesticDomainAllowListTmpFilePath()
-  fs.writeFileSync(filePath, fileTxt.replaceAll(/\r\n?/g, '\n'))
-  log.info('保存 domestic-domain-allowlist.txt 文件成功:', filePath)
+  try {
+    fs.writeFileSync(filePath, fileTxt.replaceAll(/\r\n?/g, '\n'))
+    log.info('保存 domestic-domain-allowlist.txt 文件成功:', filePath)
+  } catch (e) {
+    log.error('保存 domestic-domain-allowlist.txt 文件失败:', filePath, ', error:', e)
+    return
+  }
 
   // 尝试解析和修改 domestic-domain-allowlist.txt 文件时间
   const lastModifiedTime = loadLastModifiedTimeFromTxt(fileTxt)
@@ -93,23 +99,11 @@ function saveDomesticDomainAllowListFile (fileTxt) {
         if (utimesErr) {
           log.error('修改 domestic-domain-allowlist.txt 文件时间失败:', utimesErr)
         } else {
-          log.info(`'${filePath}' 文件的修改时间已更新为其最近更新时间 '${formatDate(lastModifiedTime)}'`)
+          log.info(`'${filePath}' 文件的修改时间已更新为其最近更新时间 '${dateUtil.format(lastModifiedTime, false)}'`)
         }
       })
     })
   }
-
-  return filePath
-}
-
-function formatDate (date) {
-  const year = date.getFullYear()
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  const seconds = date.getSeconds().toString().padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 function getDomesticDomainAllowList () {
@@ -152,22 +146,31 @@ function getDomesticDomainAllowList () {
 }
 
 function getProxyExcludeIpStr (split) {
+  const proxyExcludeIpConfig = config.get().proxy.excludeIpList
+
   let excludeIpStr = ''
-  for (const ip in config.get().proxy.excludeIpList) {
-    if (config.get().proxy.excludeIpList[ip] === true) {
+  for (const ip in proxyExcludeIpConfig) {
+    if (proxyExcludeIpConfig[ip] === true) {
       excludeIpStr += ip + split
     }
   }
 
   // 排除国内域名
+  // log.debug('系统代理排除域名（excludeIpStr）:', excludeIpStr)
   if (config.get().proxy.excludeDomesticDomainAllowList) {
     try {
-      let domesticDomainAllowList = getDomesticDomainAllowList()
+      const domesticDomainAllowList = getDomesticDomainAllowList()
       if (domesticDomainAllowList) {
-        domesticDomainAllowList = (`${domesticDomainAllowList}\n`).replaceAll(/[\r\n]+/g, '\n').replaceAll(/[\d*\-.A-Z]*[^\d\n*\-.A-Z][^\n]*\n/gi, '').trim().replaceAll(/\s*\n\s*/g, split)
-        if (domesticDomainAllowList) {
-          excludeIpStr += domesticDomainAllowList
-          log.info('系统代理排除列表拼接国内域名')
+        const domesticDomainList = (`\n${domesticDomainAllowList}`).replaceAll(/[\r\n]+/g, '\n').match(/(?<=\n)(?:[\w\-.*]+|\[[\w:]+\])(?=\n)/g)
+        if (domesticDomainList && domesticDomainList.length > 0) {
+          for (const domesticDomain of domesticDomainList) {
+            if (proxyExcludeIpConfig[domesticDomain] !== false) {
+              excludeIpStr += domesticDomain + split
+            } else {
+              log.info('系统代理排除列表拼接国内域名时，跳过域名，系统代理将继续代理它:', domesticDomain)
+            }
+          }
+          log.info('系统代理排除列表拼接国内域名成功')
         } else {
           log.info('国内域名为空，不进行系统代理排除列表拼接国内域名')
         }
@@ -176,8 +179,6 @@ function getProxyExcludeIpStr (split) {
       log.error('系统代理排除列表拼接国内域名失败:', e)
     }
   }
-
-  log.debug('系统代理排除域名（excludeIpStr）:', excludeIpStr)
 
   return excludeIpStr
 }

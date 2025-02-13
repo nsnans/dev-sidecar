@@ -13,6 +13,17 @@ export default {
       reloadLoading: false,
       urlBackup: null,
       personalUrlBackup: null,
+      maxLogFileSizeStep: 1, // 单位不同，值不同：GB=1，MB=100
+      maxLogFileSizeUnit: [
+        {
+          label: 'GB',
+          value: 'GB',
+        },
+        {
+          label: 'MB',
+          value: 'MB',
+        },
+      ],
     }
   },
   methods: {
@@ -303,6 +314,22 @@ export default {
         onCancel () {},
       })
     },
+    async onMaxLogFileSizeUnitChange (value) {
+      if (value === 'MB') {
+        this.config.app.maxLogFileSize = Math.ceil((this.config.app.maxLogFileSize || 1024) * 1024) // 转为整数
+        this.maxLogFileSizeStep = 100
+      } else {
+        this.config.app.maxLogFileSize = ((this.config.app.maxLogFileSize || 1024) / 1024).toFixed(2) - 0 // 最多保留2位小数
+        this.maxLogFileSizeStep = 1
+      }
+      this.$refs.maxLogFileSize.focus()
+    },
+    async onLogFileSavePathSelect () {
+      const value = await this.$api.fileSelector.open(this.config.app.logFileSavePath, 'dir')
+      if (value != null && value.length > 0) {
+        this.config.app.logFileSavePath = value[0]
+      }
+    },
   },
 }
 </script>
@@ -420,8 +447,8 @@ export default {
         </div>
       </a-form-item>
       <a-form-item label="启动时窗口大小" :label-col="labelCol" :wrapper-col="wrapperCol">
-        <a-input-number v-model="config.app.windowSize.width" :step="50" :min="600" :max="2400" />&nbsp;×
-        <a-input-number v-model="config.app.windowSize.height" :step="50" :min="500" :max="2000" />
+        <a-input-number v-model="config.app.windowSize.width" :step="50" :min="600" :max="2400" :precision="0" />&nbsp;×
+        <a-input-number v-model="config.app.windowSize.height" :step="50" :min="500" :max="2000" :precision="0" />
       </a-form-item>
       <hr>
       <a-form-item label="自动检查更新" :label-col="labelCol" :wrapper-col="wrapperCol">
@@ -452,16 +479,32 @@ export default {
       </a-form-item>
       <hr>
       <a-form-item label="日志文件保存目录" :label-col="labelCol" :wrapper-col="wrapperCol">
-        <a-input v-model="config.app.logFileSavePath" />
+        <a-input-search
+          v-model="config.app.logFileSavePath" enter-button="选择"
+          :title="config.app.logFileSavePath"
+          @search="onLogFileSavePathSelect"
+        />
         <div class="form-help">
           修改后，重启DS才生效！<br>
           注意：原目录中的文件不会自动转移到新的目录，请自行转移或删除。
         </div>
       </a-form-item>
-      <a-form-item label="保留日志文件数" :label-col="labelCol" :wrapper-col="wrapperCol">
-        <a-input-number v-model="config.app.keepLogFileCount" :step="1" :min="0" />
+      <a-form-item label="最大日志文件大小" :label-col="labelCol" :wrapper-col="wrapperCol">
+        <a-input-number ref="maxLogFileSize" v-model="config.app.maxLogFileSize" :step="maxLogFileSizeStep" :min="0" />
+        <a-select v-model="config.app.maxLogFileSizeUnit" class="md-ml-5" @change="onMaxLogFileSizeUnitChange">
+          <a-select-option v-for="(item) of maxLogFileSizeUnit" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </a-select-option>
+        </a-select>
         <div class="form-help">
-          修改后，隔天启动DS才会清理多余的历史日志文件！
+          修改后，重启DS才生效！<br>
+          单个日志文件的大小限制，达到限制时会执行备份和清理程序；配置为0时，表示不限制大小。
+        </div>
+      </a-form-item>
+      <a-form-item label="保留日志文件数" :label-col="labelCol" :wrapper-col="wrapperCol">
+        <a-input-number v-model="config.app.keepLogFileCount" :step="1" :min="0" :precision="0" />
+        <div class="form-help">
+          修改后，重启DS才生效，<code>隔天</code>或<code>达到日志文件大小限制</code>时，才会触发清理程序！
         </div>
       </a-form-item>
     </div>

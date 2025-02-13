@@ -6,10 +6,10 @@
  * @author WangLiang
  */
 const fs = require('node:fs')
-const path = require('node:path')
 const jsonApi = require('../../../json')
-const log = require('../../../utils/util.log')
+const log = require('../../../utils/util.log.server')
 const matchUtil = require('../../../utils/util.match')
+const configLoader = require('@docmirror/dev-sidecar/src/config/local-config-loader')
 
 const defaultConfig = {
   // connect阶段所需的兼容性配置
@@ -43,17 +43,8 @@ function _getRequestConfig (hostname, port) {
 
 // region 本地配置文件所需函数
 
-function _getConfigPath () {
-  const userHome = process.env.USERPROFILE || process.env.HOME || '/'
-  const dir = path.resolve(userHome, './.dev-sidecar')
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir)
-  }
-  return path.join(dir, '/automaticCompatibleConfig.json')
-}
-
 function _loadFromFile (defaultConfig) {
-  const configPath = _getConfigPath()
+  const configPath = configLoader.getAutomaticCompatibleConfigPath()
   let config
   if (!fs.existsSync(configPath)) {
     config = defaultConfig
@@ -62,12 +53,17 @@ function _loadFromFile (defaultConfig) {
     const file = fs.readFileSync(configPath)
     log.info('读取 automaticCompatibleConfig.json 成功:', configPath)
     const fileStr = file.toString()
-    config = fileStr && fileStr.length > 2 ? jsonApi.parse(fileStr) : defaultConfig
-    if (config.connect == null) {
-      config.connect = defaultConfig.connect
-    }
-    if (config.request == null) {
-      config.request = defaultConfig.request
+    try {
+      config = jsonApi.parse(fileStr)
+      if (config.connect == null) {
+        config.connect = defaultConfig.connect
+      }
+      if (config.request == null) {
+        config.request = defaultConfig.request
+      }
+    } catch (e) {
+      log.error('解析 automaticCompatibleConfig.json 成功:', configPath, ', error:', e)
+      return defaultConfig
     }
   }
 
@@ -75,12 +71,12 @@ function _loadFromFile (defaultConfig) {
 }
 
 function _saveConfigToFile () {
-  const filePath = _getConfigPath()
+  const filePath = configLoader.getAutomaticCompatibleConfigPath()
   try {
     fs.writeFileSync(filePath, jsonApi.stringify(config))
     log.info('保存 automaticCompatibleConfig.json 成功:', filePath)
   } catch (e) {
-    log.error('保存 automaticCompatibleConfig.json 失败:', filePath, e)
+    log.error('保存 automaticCompatibleConfig.json 失败:', filePath, ', error:', e)
   }
 }
 

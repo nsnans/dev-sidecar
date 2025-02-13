@@ -39,13 +39,13 @@ export default {
   },
   methods: {
     async onCrtSelect () {
-      const value = await this.$api.fileSelector.open()
+      const value = await this.$api.fileSelector.open(this.config.server.setting.rootCaFile.certPath, 'file')
       if (value != null && value.length > 0) {
         this.config.server.setting.rootCaFile.certPath = value[0]
       }
     },
     async onKeySelect () {
-      const value = await this.$api.fileSelector.open()
+      const value = await this.$api.fileSelector.open(this.config.server.setting.rootCaFile.keyPath, 'file')
       if (value != null && value.length > 0) {
         this.config.server.setting.rootCaFile.keyPath = value[0]
       }
@@ -206,7 +206,7 @@ export default {
               </div>
             </a-form-item>
             <a-form-item label="代理端口" :label-col="labelCol" :wrapper-col="wrapperCol">
-              <a-input-number v-model="config.server.port" :min="0" :max="65535" />
+              <a-input-number v-model="config.server.port" :min="0" :max="65535" :precision="0" />
               <div class="form-help">
                 修改后需要重启应用
               </div>
@@ -268,8 +268,8 @@ export default {
         <a-tab-pane key="3" tab="超时时间设置">
           <div style="height:100%;display:flex;flex-direction:column">
             <a-form-item label="默认超时时间" :label-col="labelCol" :wrapper-col="wrapperCol">
-              请求：<a-input-number v-model="config.server.setting.defaultTimeout" :step="1000" :min="1000" /> ms，对应<code>timeout</code>配置<br>
-              连接：<a-input-number v-model="config.server.setting.defaultKeepAliveTimeout" :step="1000" :min="1000" /> ms，对应<code>keepAliveTimeout</code>配置
+              请求：<a-input-number v-model="config.server.setting.defaultTimeout" :step="1000" :min="1000" :precision="0" /> ms，对应<code>timeout</code>配置<br>
+              连接：<a-input-number v-model="config.server.setting.defaultKeepAliveTimeout" :step="1000" :min="1000" :precision="0" /> ms，对应<code>keepAliveTimeout</code>配置
             </a-form-item>
             <hr style="margin-bottom:15px">
             <div>这里指定域名的超时时间：<span class="form-help">（域名配置可使用通配符或正则）</span></div>
@@ -281,7 +281,7 @@ export default {
         </a-tab-pane>
         <a-tab-pane key="4" tab="域名白名单">
           <a-row style="margin-top:10px">
-            <a-col span="19">
+            <a-col span="21">
               <div>这里配置的域名不会通过代理</div>
             </a-col>
             <a-col span="3">
@@ -289,7 +289,7 @@ export default {
             </a-col>
           </a-row>
           <a-row v-for="(item, index) of whiteList" :key="index" :gutter="10" style="margin-top: 5px">
-            <a-col :span="19">
+            <a-col :span="21">
               <a-input v-model="item.key" :disabled="item.value === false" />
             </a-col>
             <a-col :span="3">
@@ -329,7 +329,7 @@ export default {
         <a-tab-pane key="8" tab="DNS设置">
           <div>
             <a-row style="margin-top:10px">
-              <a-col span="19">
+              <a-col span="21">
                 <div>这里配置哪些域名需要通过国外DNS服务器获取IP进行访问</div>
               </a-col>
               <a-col span="3">
@@ -337,10 +337,10 @@ export default {
               </a-col>
             </a-row>
             <a-row v-for="(item, index) of dnsMappings" :key="index" :gutter="10" style="margin-top: 5px">
-              <a-col :span="14">
+              <a-col :span="15">
                 <a-input v-model="item.key" :disabled="item.value === false" />
               </a-col>
-              <a-col :span="5">
+              <a-col :span="6">
                 <a-select v-model="item.value" :disabled="item.value === false" style="width: 100%">
                   <a-select-option v-for="(item) of speedDnsOptions" :key="item.value" :value="item.value">
                     {{ item.value }}
@@ -363,10 +363,10 @@ export default {
               </a-checkbox>
             </a-form-item>
             <a-form-item label="自动测试间隔" :label-col="labelCol" :wrapper-col="wrapperCol">
-              <a-input-number v-model="getSpeedTestConfig().interval" :step="1000" :min="1" /> ms
+              <a-input-number v-model="getSpeedTestConfig().interval" :step="1000" :min="1" :precision="0" /> ms
             </a-form-item>
             <!-- <a-form-item label="慢速IP阈值" :label-col="labelCol" :wrapper-col="wrapperCol">
-              <a-input-number v-model="config.server.setting.lowSpeedDelay" :step="10" :min="100"/> ms
+              <a-input-number v-model="config.server.setting.lowSpeedDelay" :step="10" :min="100" :precision="0" /> ms
             </a-form-item> -->
             <div>使用以下DNS获取IP进行测速</div>
             <a-row style="margin-top:10px">
